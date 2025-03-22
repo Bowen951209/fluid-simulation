@@ -63,10 +63,21 @@ public class ShaderProgram {
         Integer location = uniformLocations.get(name);
         if (location == null) {
             location = glGetUniformLocation(programId, name);
+            if(location == -1) System.err.println("Could not find uniform variable '" + name + "'");
             uniformLocations.put(name, location);
         }
 
         return location;
+    }
+
+    public void setUniform(String name, float value) {
+        // Remember to use the program before setting uniforms
+        glUniform1f(getUniformLocation(name), value);
+    }
+
+    public void setUniform(String name, float value1, float value2) {
+        // Remember to use the program before setting uniforms
+        glUniform2f(getUniformLocation(name), value1, value2);
     }
 
     public static void cleanupAll() {
