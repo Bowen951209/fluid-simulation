@@ -90,8 +90,8 @@ public class AppSwing extends JFrame {
         if (!isLeftMouseButtonDown || mousePos == null) return;
 
         // Convert mouse coordinates to grid coordinates
-        int gridX = Math.clamp(1, n, mousePos.x * n / getWidth());
-        int gridY = Math.clamp(1, n, mousePos.y * n / getHeight());
+        int gridX = Math.clamp(1, n, (mousePos.x - getInsets().left) * n / (getWidth() - getInsets().left - getInsets().right));
+        int gridY = Math.clamp(1, n, (mousePos.y - getInsets().top) * n / (getHeight() - getInsets().top - getInsets().bottom));
 
         // Add source at the mouse position
         int halfSize = 5;
