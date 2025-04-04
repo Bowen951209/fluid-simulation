@@ -20,13 +20,12 @@ public class AppSwing extends JFrame {
     private float[][] velocitiesX = new float[n + 2][n + 2];
     private float[][] velocitiesY = new float[n + 2][n + 2];
     private float deltaTime;
-    private int mouseLastX = -1;
-    private int mouseLastY = -1;
+    private boolean isLeftMouseButtonDown;
+    private Point lastMousePos;
 
     public AppSwing() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // Key listeners
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent evt) {
@@ -40,46 +39,23 @@ public class AppSwing extends JFrame {
 
         addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseReleased(MouseEvent e) {
-                mouseLastX = -1;
-                mouseLastY = -1;
+            public void mousePressed(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    isLeftMouseButtonDown = true;
+                }
             }
-        });
 
-        addMouseMotionListener(new MouseAdapter() {
             @Override
-            public void mouseDragged(MouseEvent e) {
-                int mouseX = e.getX();
-                int mouseY = e.getY();
+            public void mouseReleased(MouseEvent e) {
+                lastMousePos = null;
 
-                // Convert mouse coordinates to grid coordinates
-                int gridX = Math.clamp(0, n - 1, mouseX);
-                int gridY = Math.clamp(0, n - 1, mouseY);
-
-                // Add source at the mouse position
-                for (int i = 0; i < 10; i++) {
-                    for (int j = 0; j < 10; j++) {
-                        int sourceX = Math.clamp(0, n - 1, gridX + i);
-                        int sourceY = Math.clamp(0, n - 1, gridY + j);
-                        prevDensities[sourceX][sourceY] = 0.8f;
-                    }
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    isLeftMouseButtonDown = false;
                 }
-
-                // Add velocity source at the mouse position
-                for (int i = 0; i < 10; i++) {
-                    for (int j = 0; j < 10; j++) {
-                        int sourceX = Math.clamp(0, n - 1, gridX + i);
-                        int sourceY = Math.clamp(0, n - 1, gridY + j);
-                        prevVelocitiesX[sourceX][sourceY] = mouseX - mouseLastX;
-                        prevVelocitiesY[sourceX][sourceY] = mouseY - mouseLastY;
-                    }
-                }
-
-                mouseLastX = mouseX;
-                mouseLastY = mouseY;
             }
         });
 
+        // Add the fluid panel as the canvas
         FluidPanel fluidPanel = new FluidPanel(densities, n);
         add(fluidPanel);
 
@@ -91,15 +67,56 @@ public class AppSwing extends JFrame {
         new Thread(() -> {
             while (true) {
                 long startTime = System.currentTimeMillis();
+                getSourcesFromUI();
+
                 velocityStep();
                 densityStep();
                 clearSource(prevDensities);
                 clearSource(prevVelocitiesX);
                 clearSource(prevVelocitiesY);
                 fluidPanel.repaint();
-                deltaTime = (System.currentTimeMillis() - startTime) / 1000.0f;
+
+                long elapsedTime = System.currentTimeMillis() - startTime;
+                deltaTime = (float) elapsedTime / 1000.0f;
+
+                // Show elapsed time and FPS in the title bar
+                setTitle("Fluid Simulation - Elapsed Time: " + elapsedTime + " ms, FPS: " + (1000.0f / deltaTime));
             }
         }).start();
+    }
+
+    private void getSourcesFromUI() {
+        Point mousePos = getMousePosition();
+        if (!isLeftMouseButtonDown || mousePos == null) return;
+
+        // Convert mouse coordinates to grid coordinates
+        int gridX = Math.clamp(1, n, mousePos.x * n / getWidth());
+        int gridY = Math.clamp(1, n, mousePos.y * n / getHeight());
+
+        // Add source at the mouse position
+        int halfSize = 5;
+        for (int i = -halfSize; i <= halfSize; i++) {
+            for (int j = -halfSize; j <= halfSize; j++) {
+                int sourceX = Math.clamp(1, n, gridX + i);
+                int sourceY = Math.clamp(1, n, gridY + j);
+                prevDensities[sourceX][sourceY] = 10f;
+            }
+        }
+
+        // Add velocity source at the mouse position
+        if (lastMousePos != null) {
+            for (int i = -halfSize; i <= halfSize; i++) {
+                for (int j = -halfSize; j <= halfSize; j++) {
+                    int sourceX = Math.clamp(1, n, gridX + i);
+                    int sourceY = Math.clamp(1, n, gridY + j);
+
+                    prevVelocitiesX[sourceX][sourceY] = mousePos.x - lastMousePos.x;
+                    prevVelocitiesY[sourceX][sourceY] = mousePos.y - lastMousePos.y;
+                }
+            }
+        }
+
+        lastMousePos = mousePos;
     }
 
     private void addSource(float[][] arr, float[][] source) {
