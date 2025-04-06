@@ -1,6 +1,7 @@
 package system;
 
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -9,11 +10,12 @@ import static org.lwjgl.opengl.GL43.*;
 public class Texture {
     private static final Set<Texture> TEXTURES_TO_CLEANUP = new HashSet<>();
 
+    private static ShaderProgram clearRProgram, clearRGProgram, clearRGBProgram;
     private final int textureId;
     private final int width;
     private final int height;
-    private final int internalFormat;
     private final int format;
+    private final int internalFormat;
 
     public Texture(int width, int height, int internalFormat, int format, ByteBuffer data, boolean autoCleanup) {
         this.width = width;
@@ -54,6 +56,41 @@ public class Texture {
             glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
     }
 
+    public void putData(FloatBuffer data) {
+        glBindTexture(GL_TEXTURE_2D, textureId);
+
+        if (data == null)
+            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_FLOAT, 0);
+        else
+            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_FLOAT, data);
+    }
+
+    public void clearData() {
+        ShaderProgram program;
+        if (format == GL_RG) {
+            program = clearRGProgram;
+        } else if (format == GL_RED) {
+            program = clearRProgram;
+        } else if (format == GL_RGB) {
+            program = clearRGBProgram;
+        } else {
+            throw new IllegalArgumentException("Unsupported format: " + format);
+        }
+
+        program.use();
+        bindToImageUnit(0, GL_WRITE_ONLY);
+        glDispatchCompute(Engine.NUM_GROUPS_X, Engine.NUM_GROUPS_Y, 1);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    }
+
+    public void copyFrom(Texture texture, ShaderProgram addSourceProgram) {
+        bindToImageUnit(0, GL_WRITE_ONLY);
+        texture.bindToUnit(0);
+        addSourceProgram.use();
+        addSourceProgram.setUniform("deltaTime", 1.0f);
+        glDispatchCompute(Engine.NUM_GROUPS_X, Engine.NUM_GROUPS_Y, 1);
+    }
+
     public void bindToUnit(int unit) {
         glActiveTexture(GL_TEXTURE0 + unit);
         glBindTexture(GL_TEXTURE_2D, textureId);
@@ -71,12 +108,8 @@ public class Texture {
         System.out.println("Deleted texture " + textureId);
     }
 
-    public int getWidth() {
-        return width;
-    }
-
-    public int getHeight() {
-        return height;
+    public int getFormat() {
+        return format;
     }
 
     public static void cleanupAll() {
@@ -85,5 +118,32 @@ public class Texture {
             texture.cleanup();
 
         TEXTURES_TO_CLEANUP.clear();
+    }
+
+    public static void initClearPrograms() {
+        initClearRProgram();
+        initClearRGProgram();
+        initClearRGBProgram();
+    }
+
+    private static void initClearRProgram() {
+        clearRProgram = new ShaderProgram(true);
+        Shader shader = new Shader("shaders/clearR.glsl", GL_COMPUTE_SHADER);
+        clearRProgram.attachShader(shader);
+        clearRProgram.link();
+    }
+
+    private static void initClearRGProgram() {
+        clearRGProgram = new ShaderProgram(true);
+        Shader shader = new Shader("shaders/clearRG.glsl", GL_COMPUTE_SHADER);
+        clearRGProgram.attachShader(shader);
+        clearRGProgram.link();
+    }
+
+    private static void initClearRGBProgram() {
+        clearRGBProgram = new ShaderProgram(true);
+        Shader shader = new Shader("shaders/clearRGB.glsl", GL_COMPUTE_SHADER);
+        clearRGBProgram.attachShader(shader);
+        clearRGBProgram.link();
     }
 }

@@ -4,9 +4,10 @@ import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
 import system.*;
 
-import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,18 +20,13 @@ import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
 public class App {
-    private static final int NUM_JACOBI_STEPS = 40;
-    private static final int NUM_LOCAL_SIZE_X = 16;
-    private static final int NUM_LOCAL_SIZE_Y = 16;
-
-
     private long window;
-    private Texture velocityTextureRead, velocityTextureWrite, divergenceTexture, pressureTexture;
-    private ShaderProgram screenProgram, advectProgram, jacobiRGProgram, divergenceProgram,
-            projectProgram, copyProgram, jacobiRProgram;
+    private ShaderProgram screenProgram;
+    private FloatBuffer userInputBuffer;
     private List<VAO> vaos;
-    private int width, height;
+    private int width, height, lastMouseX, lastMouseY;
     private float deltaTime;
+    private Engine engine;
 
     public void run(int width, int height, String title) {
         this.width = width;
@@ -43,6 +39,8 @@ public class App {
         initShaders();
         initTextures();
         initBufferObjects();
+        Engine.init();
+        engine = new Engine();
 
         loop();
         free();
@@ -72,6 +70,44 @@ public class App {
         glfwSetKeyCallback(window, (window, key, scancode, action, mods) -> {
             if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
                 glfwSetWindowShouldClose(window, true); // We will detect this in the rendering loop
+        });
+
+        // Setup a mouse callback.
+        glfwSetCursorPosCallback(window, (window, xpos, ypos) -> {
+            if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE) {
+                return;
+            }
+
+            userInputBuffer.clear();
+            for (int i = 0; i < userInputBuffer.capacity(); i++) {
+                userInputBuffer.put(0);
+            }
+
+
+            // Mouse dragging logic:
+            ypos = height - ypos; // Invert Y coordinate
+            int index = (int) (ypos * width + xpos) * 3;
+
+            float velocityX = (float) (xpos - lastMouseX);
+            float velocityY = (float) (ypos - lastMouseY);
+
+
+            int halfSize = 2;
+            for (int i = -halfSize; i <= halfSize; i++) {
+                for (int j = -halfSize; j <= halfSize; j++) {
+                    int offsetIndex = index + (i * width + j) * 3;
+                    if (offsetIndex < 0 || offsetIndex >= userInputBuffer.capacity() - 3) {
+                        continue; // Out of bounds
+                    }
+                    userInputBuffer.put(offsetIndex, velocityX);
+                    userInputBuffer.put(offsetIndex + 1, velocityY);
+                    userInputBuffer.put(offsetIndex + 2, 10f); // density
+                }
+            }
+            lastMouseX = (int) xpos;
+            lastMouseY = (int) ypos;
+            userInputBuffer.flip();
+            engine.getUserInputTexture().putData(userInputBuffer);
         });
 
         // Get the thread stack and push a new frame
@@ -104,65 +140,18 @@ public class App {
     }
 
     private void initTextures() {
-        ByteBuffer buffer = BufferUtils.createByteBuffer(width * height * 2 * Float.BYTES);
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                float x = (float) i / width;
-                float y = (float) j / height;
-                float u = (float) Math.PI * (float) Math.cos(Math.PI * y) * (float) Math.sin(Math.PI * x);
-                float v = -(float) Math.PI * (float) Math.cos(Math.PI * x) * (float) Math.sin(Math.PI * y);
-                buffer.putFloat(u).putFloat(v);
-            }
-        }
-        buffer.flip();
-
-        velocityTextureRead = new Texture(width, height, GL_RG32F, GL_RG, buffer, true);
-        velocityTextureWrite = new Texture(width, height, GL_RG32F, GL_RG, null, true);
-        divergenceTexture = new Texture(width, height, GL_R32F, GL_RED, null, true);
-        pressureTexture = new Texture(width, height, GL_R32F, GL_RED, null, true);
+        // For the user input texture
+        userInputBuffer = BufferUtils.createFloatBuffer(width * height * 3);
     }
 
     private void initShaders() {
-            Shader screenVertexShader = new Shader("shaders/vertex.glsl", GL_VERTEX_SHADER);
-            Shader screenFragmentShader = new Shader("shaders/fragment.glsl", GL_FRAGMENT_SHADER);
+        Shader screenVertexShader = new Shader("shaders/vertex.glsl", GL_VERTEX_SHADER);
+        Shader screenFragmentShader = new Shader("shaders/fragment.glsl", GL_FRAGMENT_SHADER);
 
-            screenProgram = new ShaderProgram(true);
-            screenProgram.attachShader(screenVertexShader);
-            screenProgram.attachShader(screenFragmentShader);
-            screenProgram.link();
-
-            Shader advectShader = new Shader("shaders/advect.glsl", GL_COMPUTE_SHADER);
-            advectProgram = new ShaderProgram(true);
-            advectProgram.attachShader(advectShader);
-            advectProgram.link();
-
-            advectProgram.use();
-            advectProgram.setUniform("resolution", width, height);
-
-            Shader jacobiRGShader = new Shader("shaders/jacobiRG.glsl", GL_COMPUTE_SHADER);
-            jacobiRGProgram = new ShaderProgram(true);
-            jacobiRGProgram.attachShader(jacobiRGShader);
-            jacobiRGProgram.link();
-
-            Shader jacobiRShader = new Shader("shaders/jacobiR.glsl", GL_COMPUTE_SHADER);
-            jacobiRProgram = new ShaderProgram(true);
-            jacobiRProgram.attachShader(jacobiRShader);
-            jacobiRProgram.link();
-
-            Shader divergenceShader = new Shader("shaders/divergence.glsl", GL_COMPUTE_SHADER);
-            divergenceProgram = new ShaderProgram(true);
-            divergenceProgram.attachShader(divergenceShader);
-            divergenceProgram.link();
-
-            Shader projectShader = new Shader("shaders/project.glsl", GL_COMPUTE_SHADER);
-            projectProgram = new ShaderProgram(true);
-            projectProgram.attachShader(projectShader);
-            projectProgram.link();
-
-            Shader copyShader = new Shader("shaders/copyRG.glsl", GL_COMPUTE_SHADER);
-            copyProgram = new ShaderProgram(true);
-            copyProgram.attachShader(copyShader);
-            copyProgram.link();
+        screenProgram = new ShaderProgram(true);
+        screenProgram.attachShader(screenVertexShader);
+        screenProgram.attachShader(screenFragmentShader);
+        screenProgram.link();
     }
 
     private void initBufferObjects() {
@@ -170,10 +159,10 @@ public class App {
 
         // Vertex data for a quad (positions only)
         float[] quadVertices = {
-                -0.5f, -0.5f, 0.0f,  // Bottom-left
-                0.5f, -0.5f, 0.0f,  // Bottom-right
-                0.5f, 0.5f, 0.0f,  // Top-right
-                -0.5f, 0.5f, 0.0f   // Top-left
+                -1f, -1f, 0.0f,  // Bottom-left
+                1f, -1f, 0.0f,  // Bottom-right
+                1f, 1f, 0.0f,  // Top-right
+                -1f, 1f, 0.0f   // Top-left
         };
 
         // Index data for the quad (two triangles)
@@ -194,7 +183,8 @@ public class App {
         VAO quadVAO = new VAO(quadVertices.length, true, true) {
             @Override
             public void draw() {
-                velocityTextureRead.bindToUnit(0);
+                engine.getVelocityTexture().bindToUnit(0);
+//                engine.getDensityTexture().bindToUnit(0);
                 super.draw();
             }
         };
@@ -217,93 +207,6 @@ public class App {
         quadIBO.bind();  // Bind IBO for indexed drawing
     }
 
-    private void fluidStep() {
-        int numGroupsX = (velocityTextureRead.getWidth() + NUM_LOCAL_SIZE_X - 1) / NUM_LOCAL_SIZE_X;
-        int numGroupsY = (velocityTextureRead.getHeight() + NUM_LOCAL_SIZE_Y - 1) / NUM_LOCAL_SIZE_Y;
-
-        // --- Advection ---
-        velocityTextureWrite.bindToImageUnit(0, GL_READ_WRITE);
-        velocityTextureRead.bindToUnit(0);
-
-        advectProgram.use();
-        advectProgram.setUniform("deltaTime", deltaTime);
-
-        glDispatchCompute(numGroupsX, numGroupsY, 1);
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
-        // -----------------
-
-
-        // Copy the data in velocityTextureWrite to velocityTextureRead
-        velocityTextureRead.bindToImageUnit(0, GL_READ_WRITE);
-        velocityTextureWrite.bindToUnit(0);
-
-        copyProgram.use();
-        glDispatchCompute(numGroupsX, numGroupsY, 1);
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
-
-        // Swap velocity texture write and read (Ping-Pong)
-        Texture temp = velocityTextureRead;
-        velocityTextureRead = velocityTextureWrite;
-        velocityTextureWrite = temp;
-
-        velocityTextureWrite.bindToImageUnit(0, GL_READ_WRITE);
-        velocityTextureRead.bindToUnit(0);
-
-
-        // --- Diffusion ---
-        velocityTextureWrite.bindToImageUnit(0, GL_READ_WRITE);
-        velocityTextureRead.bindToUnit(0);
-
-        jacobiRGProgram.use();
-        float diffusionRate = 0.0001f;
-        float a = deltaTime * diffusionRate;
-        float b = 1f / (4f + a);
-        jacobiRGProgram.setUniform("a", a);
-        jacobiRGProgram.setUniform("b", b);
-
-        for (int i = 0; i < NUM_JACOBI_STEPS; i++) {
-            glDispatchCompute(numGroupsX, numGroupsY, 1);
-            glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
-        }
-        // -----------------
-
-        // --- Divergence ---
-        divergenceTexture.bindToImageUnit(0, GL_WRITE_ONLY);
-
-        divergenceProgram.use();
-        float gridScale = 0.5f / (1.0f / width);
-        divergenceProgram.setUniform("gridScale", gridScale);
-
-        glDispatchCompute(numGroupsX, numGroupsY, 1);
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
-        // ------------------
-
-        // --- Pressure Solve ---
-        divergenceTexture.bindToImageUnit(0, GL_WRITE_ONLY);
-        pressureTexture.bindToUnit(0);
-
-        jacobiRProgram.use();
-        jacobiRProgram.setUniform("a", a);
-        jacobiRProgram.setUniform("b", b);
-
-        for (int i = 0; i < NUM_JACOBI_STEPS; i++) {
-            glDispatchCompute(numGroupsX, numGroupsY, 1);
-            glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
-        }
-        // ----------------------
-
-        // --- Projection ---
-        pressureTexture.bindToUnit(0);
-        velocityTextureWrite.bindToImageUnit(0, GL_READ_WRITE);
-
-        projectProgram.use();
-        projectProgram.setUniform("gridScale", gridScale);
-
-        glDispatchCompute(numGroupsX, numGroupsY, 1);
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
-        // ------------------
-    }
-
     private void loop() {
         // Run the rendering loop until the user has attempted to close
         // the window or has pressed the ESCAPE key.
@@ -313,7 +216,7 @@ public class App {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
 
             // Perform the fluid simulation step
-            fluidStep();
+            engine.step(deltaTime);
 
             // Render the models for rasterization
             screenProgram.use();
@@ -337,6 +240,7 @@ public class App {
         ShaderProgram.cleanupAll();
         BufferObject.cleanupAll();
         VAO.cleanupAll();
+        MemoryUtil.memFree(userInputBuffer);
 
         glfwFreeCallbacks(window);
         System.out.println("GLFW Callbacks freed!");
@@ -352,6 +256,6 @@ public class App {
     }
 
     public static void main(String[] args) {
-        new App().run(300, 300, "Fluid Simulation");
+        new App().run(200, 200, "Fluid Simulation");
     }
 }
