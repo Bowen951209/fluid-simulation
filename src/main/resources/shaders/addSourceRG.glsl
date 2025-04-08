@@ -9,7 +9,6 @@ uniform float deltaTime;
 
 void main() {
     ivec2 storePos = ivec2(gl_GlobalInvocationID.xy);
-    vec4 value = texelFetch(samp, storePos, 0) + imageLoad(img, storePos);
-
-    imageStore(img, storePos, value * deltaTime);
+    vec4 value = texelFetch(samp, storePos, 0) * deltaTime + imageLoad(img, storePos);
+    imageStore(img, storePos, value);
 }
