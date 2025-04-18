@@ -8,13 +8,17 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 public class AppSwing extends JFrame {
+    private static final int RENDER_MODE_DENSITY = 0;
+    private static final int RENDER_MODE_VELOCITY = 1;
+
     private final int n = 200;
     private final int iterationCount = 20;
-    private float[][] prevDensities = new float[n + 2][n + 2];
-    private float[][] densities = new float[n + 2][n + 2];
     private final float[][] divergence = new float[n + 2][n + 2];
     private final float[][] pressure = new float[n + 2][n + 2];
+    private final FluidPanel fluidPanel;
 
+    private float[][] prevDensities = new float[n + 2][n + 2];
+    private float[][] densities = new float[n + 2][n + 2];
     private float[][] prevVelocitiesX = new float[n + 2][n + 2];
     private float[][] prevVelocitiesY = new float[n + 2][n + 2];
     private float[][] velocitiesX = new float[n + 2][n + 2];
@@ -33,6 +37,17 @@ public class AppSwing extends JFrame {
                 if (evt.getKeyCode() == KeyEvent.VK_ESCAPE) {
                     dispose();
                     System.exit(0);
+                }
+
+                // Change render mode to density on F1 key press
+                if (evt.getKeyCode() == KeyEvent.VK_F1) {
+                    fluidPanel.renderMode = RENDER_MODE_DENSITY;
+                    System.out.println("Render mode changed to DENSITY");
+                }
+                // Change render mode to velocity on F2 key press
+                if (evt.getKeyCode() == KeyEvent.VK_F2) {
+                    fluidPanel.renderMode = RENDER_MODE_VELOCITY;
+                    System.out.println("Render mode changed to VELOCITY");
                 }
             }
         });
@@ -56,7 +71,7 @@ public class AppSwing extends JFrame {
         });
 
         // Add the fluid panel as the canvas
-        FluidPanel fluidPanel = new FluidPanel(densities, n);
+        fluidPanel = new FluidPanel(densities, velocitiesX, velocitiesY, n);
         add(fluidPanel);
 
         pack();
@@ -285,11 +300,14 @@ public class AppSwing extends JFrame {
     }
 
     static class FluidPanel extends JPanel {
-        private final float[][] densities;
+        private final float[][] densities, velocitiesX, velocitiesY;
         private final int n;
+        public int renderMode;
 
-        public FluidPanel(float[][] densities, int n) {
+        public FluidPanel(float[][] densities, float[][] velocitiesX, float[][] velocitiesY, int n) {
             this.densities = densities;
+            this.velocitiesX = velocitiesX;
+            this.velocitiesY = velocitiesY;
             this.n = n;
             setPreferredSize(new Dimension(n, n));
         }
@@ -304,9 +322,16 @@ public class AppSwing extends JFrame {
 
             for (int i = 1; i <= n; i++) {
                 for (int j = 1; j <= n; j++) {
-                    float value = Math.clamp(0f, 1f, densities[i][j]);
-                    g2d.setColor(new Color(value, value, value));
-                    g2d.fillRect(i, j, 1, 1);
+                    if (renderMode == RENDER_MODE_VELOCITY) {
+                        float valueX = Math.clamp(0f, 1f, velocitiesX[i][j]);
+                        float valueY = Math.clamp(0f, 1f, velocitiesY[i][j]);
+                        g2d.setColor(new Color(valueX, valueY, 0));
+                        g2d.fillRect(i, j, 1, 1);
+                    } else if (renderMode == RENDER_MODE_DENSITY) {
+                        float value = Math.clamp(0f, 1f, densities[i][j]);
+                        g2d.setColor(new Color(value, value, value));
+                        g2d.fillRect(i, j, 1, 1);
+                    }
                 }
             }
         }
