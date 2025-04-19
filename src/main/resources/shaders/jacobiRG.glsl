@@ -12,9 +12,6 @@ uniform float b;
 void main() {
     ivec2 storePos = ivec2(gl_GlobalInvocationID.xy);
     ivec2 size = imageSize(img);
-//    if (storePos.x <= 0 || storePos.x >= size.x - 1 || storePos.y <= 0 || storePos.y >= size.y - 1) {
-//        return;
-//    }
 
     // Read the values of the current grid point and its four neighbors
     vec2 left   = imageLoad(img, storePos + ivec2(-1, 0)).rg;
