@@ -116,7 +116,7 @@ public class Engine {
 
 
         divergenceProgram.use();
-        float h = 1.0f / N;
+        float h = -0.5f / N;
         divergenceProgram.setUniform("h", h);
 
         glDispatchCompute(NUM_GROUPS_X, NUM_GROUPS_Y, 1);
@@ -143,7 +143,7 @@ public class Engine {
         pressure.bindToUnit(0);
 
         subtractPressureProgram.use();
-        float h = 1.0f / N;
+        float h = -0.5f * N;
         subtractPressureProgram.setUniform("h", h);
 
         glDispatchCompute(NUM_GROUPS_X, NUM_GROUPS_Y, 1);
