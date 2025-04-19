@@ -165,6 +165,11 @@ public class Engine {
         pressure.clearData();
     }
 
+    public void clear() {
+        densities.clearData();
+        velocities.clearData();
+    }
+
     public Texture getDensityTexture() {
         return densities.getWriteTexture();
     }

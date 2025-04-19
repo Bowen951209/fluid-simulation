@@ -22,6 +22,15 @@ public class PingPongTexture {
         readTexture.clearData();
     }
 
+    public void clearWrite() {
+        writeTexture.clearData();
+    }
+
+    public void clearData() {
+        clearRead();
+        clearWrite();
+    }
+
     public Texture getReadTexture() {
         return readTexture;
     }

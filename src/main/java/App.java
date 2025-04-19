@@ -20,6 +20,9 @@ import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
 public class App {
+    private static final int RENDER_MODE_DENSITY = 0;
+    private static final int RENDER_MODE_VELOCITY = 1;
+
     private long window;
     private ShaderProgram screenProgram;
     private FloatBuffer userInputBuffer;
@@ -27,12 +30,14 @@ public class App {
     private int width, height, lastMouseX, lastMouseY;
     private float deltaTime;
     private Engine engine;
+    private int renderMode;
 
     public void run(int width, int height, String title) {
         this.width = width;
         this.height = height;
 
         System.out.println("LWJGL Version:" + Version.getVersion() + "!");
+        System.out.println("Resolution: " + width + "x" + height);
 
         initGLFW(title);
         GL.createCapabilities();
@@ -68,8 +73,18 @@ public class App {
 
         // Setup a key callback. It will be called every time a key is pressed, repeated or released.
         glfwSetKeyCallback(window, (window, key, scancode, action, mods) -> {
-            if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
+            if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
                 glfwSetWindowShouldClose(window, true); // We will detect this in the rendering loop
+            } else if (key == GLFW_KEY_F1 && action == GLFW_PRESS) {
+                renderMode = RENDER_MODE_DENSITY;
+                System.out.println("Render mode: DENSITY");
+            } else if (key == GLFW_KEY_F2 && action == GLFW_PRESS) {
+                renderMode = RENDER_MODE_VELOCITY;
+                System.out.println("Render mode: VELOCITY");
+            } else if (key == GLFW_KEY_F3 && action == GLFW_PRESS) {
+                engine.clear();
+                System.out.println("Cleared simulation data");
+            }
         });
 
         // Setup a mouse callback.
@@ -183,8 +198,11 @@ public class App {
         VAO quadVAO = new VAO(quadVertices.length, true, true) {
             @Override
             public void draw() {
-//                engine.getVelocityTexture().bindToUnit(0);
-                engine.getDensityTexture().bindToUnit(0);
+                if (renderMode == RENDER_MODE_DENSITY) {
+                    engine.getDensityTexture().bindToUnit(0);
+                } else if (renderMode == RENDER_MODE_VELOCITY) {
+                    engine.getVelocityTexture().bindToUnit(0);
+                }
                 super.draw();
             }
         };
