@@ -30,10 +30,7 @@ public class Engine {
         getSourcesFromUI();
         userInputTexture.clearData();
         velocityStep(deltaTime);
-        velocities.swapReadWrite();
-
         densityStep(deltaTime);
-        velocities.swapReadWrite();
 
         clearSources();
     }
@@ -41,7 +38,7 @@ public class Engine {
     private void densityStep(float deltaTime) {
         addSource(densities, deltaTime);
         densities.swapReadWrite();
-        diffuse(densities, 0.01f, deltaTime);
+        diffuse(densities, 0.0001f, deltaTime);
         densities.swapReadWrite();
         advect(densities, deltaTime);
     }
@@ -51,10 +48,6 @@ public class Engine {
         velocities.swapReadWrite();
         diffuse(velocities, 0.1f, deltaTime);
         project();
-        velocities.swapReadWrite();
-
-        velocities.getWriteTexture().copyFrom(velocities.getReadTexture(), addSourceProgramRG);
-
         advect(velocities, deltaTime);
         project();
     }
@@ -87,11 +80,6 @@ public class Engine {
         float b = 1f / (1 + 4 * a);
         program.setUniform("a", a);
         program.setUniform("b", b);
-//        float h = 1.0f / N;
-//        float alpha = (h * h) / (rate * deltaTime);
-//        float beta = 1.0f / (4.0f + alpha);
-//        program.setUniform("a", alpha);
-//        program.setUniform("b", beta);
 
         for (int i = 0; i < JACOBI_ITERATION_COUNT; i++) {
             glDispatchCompute(NUM_GROUPS_X, NUM_GROUPS_Y, 1);
@@ -183,10 +171,6 @@ public class Engine {
 
     public Texture getVelocityTexture() {
         return velocities.getWriteTexture();
-    }
-
-    public Texture getPressureTexture() {
-        return pressure;
     }
 
     public Texture getUserInputTexture() {

@@ -88,8 +88,8 @@ public class App {
             ypos = height - ypos; // Invert Y coordinate
             int index = (int) (ypos * width + xpos) * 3;
 
-            float velocityX = (float) (xpos - lastMouseX);
-            float velocityY = (float) (ypos - lastMouseY);
+            float velocityX = (float) (xpos - lastMouseX) * 10f;
+            float velocityY = (float) (ypos - lastMouseY) * 10f;
 
 
             int halfSize = 2;
@@ -101,7 +101,7 @@ public class App {
                     }
                     userInputBuffer.put(offsetIndex, velocityX);
                     userInputBuffer.put(offsetIndex + 1, velocityY);
-                    userInputBuffer.put(offsetIndex + 2, 10f); // density
+                    userInputBuffer.put(offsetIndex + 2, 3f); // density
                 }
             }
             lastMouseX = (int) xpos;
@@ -183,8 +183,8 @@ public class App {
         VAO quadVAO = new VAO(quadVertices.length, true, true) {
             @Override
             public void draw() {
-                engine.getVelocityTexture().bindToUnit(0);
-//                engine.getDensityTexture().bindToUnit(0);
+//                engine.getVelocityTexture().bindToUnit(0);
+                engine.getDensityTexture().bindToUnit(0);
                 super.draw();
             }
         };

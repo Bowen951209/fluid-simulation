@@ -83,14 +83,6 @@ public class Texture {
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 
-    public void copyFrom(Texture texture, ShaderProgram addSourceProgram) {
-        bindToImageUnit(0, GL_WRITE_ONLY);
-        texture.bindToUnit(0);
-        addSourceProgram.use();
-        addSourceProgram.setUniform("deltaTime", 1.0f);
-        glDispatchCompute(Engine.NUM_GROUPS_X, Engine.NUM_GROUPS_Y, 1);
-    }
-
     public void bindToUnit(int unit) {
         glActiveTexture(GL_TEXTURE0 + unit);
         glBindTexture(GL_TEXTURE_2D, textureId);

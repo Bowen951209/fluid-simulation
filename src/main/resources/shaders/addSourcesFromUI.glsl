@@ -12,11 +12,4 @@ void main() {
 
     imageStore(velocityImage, storePos, vec4(inputData.rg, 0.0, 0.0));
     imageStore(densityImage, storePos, vec4(inputData.b, 0.0, 0.0, 0.0));
-
-//    imageStore(velocityImage, storePos, vec4(1.0, 0.0, 0.0, 0.0));
-//
-//    // Add density at the center of the image
-//    if (storePos.x >= 150 && storePos.x <= 170 && storePos.y >= 150 && storePos.y <= 170) {
-//        imageStore(densityImage, storePos, vec4(4.0, 0.0, 0.0, 0.0));
-//    }
 }
