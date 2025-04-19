@@ -56,6 +56,15 @@ public class Texture {
             glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
     }
 
+
+    /**
+     * Puts data into the texture.
+     * If data is null, an empty data is put.
+     * <br>
+     * The internal format and format is already set when the constructor is called.
+     * <br>
+     * This method sets the texel data type to GL_FLOAT.
+     */
     public void putData(FloatBuffer data) {
         glBindTexture(GL_TEXTURE_2D, textureId);
 
