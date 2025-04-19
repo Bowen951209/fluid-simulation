@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.lwjgl.opengl.GL20.*;
+import static org.lwjgl.opengl.GL43.GL_COMPUTE_SHADER;
 
 public class ShaderProgram {
     private final static Set<ShaderProgram> PROGRAMS_TO_CLEANUP = new HashSet<>();
@@ -78,6 +79,15 @@ public class ShaderProgram {
     public void setUniform(String name, float value1, float value2) {
         // Remember to use the program before setting uniforms
         glUniform2f(getUniformLocation(name), value1, value2);
+    }
+
+    public static ShaderProgram createComputeProgram(String file) {
+        ShaderProgram computeProgram = new ShaderProgram(true);
+        Shader shader = new Shader(file, GL_COMPUTE_SHADER);
+        computeProgram.attachShader(shader);
+        computeProgram.link();
+
+        return computeProgram;
     }
 
     public static void cleanupAll() {

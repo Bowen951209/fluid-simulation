@@ -74,6 +74,9 @@ public class Texture {
             glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_FLOAT, data);
     }
 
+    /**
+     * Clears the texture data using a compute shader.
+     */
     public void clearData() {
         ShaderProgram program;
         if (format == GL_RG) {

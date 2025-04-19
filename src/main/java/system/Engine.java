@@ -26,6 +26,26 @@ public class Engine {
         userInputTexture = new Texture(N, N, GL_RGBA32F, GL_RGB, null, true);
     }
 
+    /**
+     * Clear {@link #densities} and {@link #velocities} textures.
+     */
+    public void clear() {
+        densities.clearData();
+        velocities.clearData();
+    }
+
+    public Texture getDensityTexture() {
+        return densities.getWriteTexture();
+    }
+
+    public Texture getVelocityTexture() {
+        return velocities.getWriteTexture();
+    }
+
+    public Texture getUserInputTexture() {
+        return userInputTexture;
+    }
+
     public void step(float deltaTime) {
         getSourcesFromUI();
         userInputTexture.clearData();
@@ -165,42 +185,16 @@ public class Engine {
         pressure.clearData();
     }
 
-    public void clear() {
-        densities.clearData();
-        velocities.clearData();
-    }
-
-    public Texture getDensityTexture() {
-        return densities.getWriteTexture();
-    }
-
-    public Texture getVelocityTexture() {
-        return velocities.getWriteTexture();
-    }
-
-    public Texture getUserInputTexture() {
-        return userInputTexture;
-    }
-
-    private static ShaderProgram createComputeProgram(String file) {
-        ShaderProgram computeProgram = new ShaderProgram(true);
-        Shader shader = new Shader(file, GL_COMPUTE_SHADER);
-        computeProgram.attachShader(shader);
-        computeProgram.link();
-
-        return computeProgram;
-    }
-
     public static void init() {
-        addSourceProgramR = createComputeProgram("shaders/addSourceR.glsl");
-        addSourceProgramRG = createComputeProgram("shaders/addSourceRG.glsl");
-        jacobiProgramR = createComputeProgram("shaders/jacobiR.glsl");
-        jacobiProgramRG = createComputeProgram("shaders/jacobiRG.glsl");
-        advectProgramR = createComputeProgram("shaders/advectR.glsl");
-        advectProgramRG = createComputeProgram("shaders/advectRG.glsl");
-        subtractPressureProgram = createComputeProgram("shaders/subtractPressure.glsl");
-        divergenceProgram = createComputeProgram("shaders/divergence.glsl");
-        sourcesFromUIProgram = createComputeProgram("shaders/addSourcesFromUI.glsl");
+        addSourceProgramR = ShaderProgram.createComputeProgram("shaders/addSourceR.glsl");
+        addSourceProgramRG = ShaderProgram.createComputeProgram("shaders/addSourceRG.glsl");
+        jacobiProgramR = ShaderProgram.createComputeProgram("shaders/jacobiR.glsl");
+        jacobiProgramRG = ShaderProgram.createComputeProgram("shaders/jacobiRG.glsl");
+        advectProgramR = ShaderProgram.createComputeProgram("shaders/advectR.glsl");
+        advectProgramRG = ShaderProgram.createComputeProgram("shaders/advectRG.glsl");
+        subtractPressureProgram = ShaderProgram.createComputeProgram("shaders/subtractPressure.glsl");
+        divergenceProgram = ShaderProgram.createComputeProgram("shaders/divergence.glsl");
+        sourcesFromUIProgram = ShaderProgram.createComputeProgram("shaders/addSourcesFromUI.glsl");
         Texture.initClearPrograms();
     }
 }
