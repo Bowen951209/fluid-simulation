@@ -10,7 +10,7 @@ import static org.lwjgl.opengl.GL43.*;
 public class Texture {
     private static final Set<Texture> TEXTURES_TO_CLEANUP = new HashSet<>();
 
-    private static ShaderProgram clearRProgram, clearRGProgram, clearRGBProgram;
+    private static ShaderProgram clearRProgram, clearRGProgram, clearRGBProgram, copyRGProgram;
     private final int textureId;
     private final int width;
     private final int height;
@@ -95,6 +95,20 @@ public class Texture {
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 
+    public void copyFrom(Texture texture) {
+        if (this.format != texture.format)
+            throw new IllegalArgumentException("Texture formats do not match: " + this.format + " != " + texture.format);
+
+        if(this.format == GL_RG) {
+            copyRGProgram.use();
+            texture.bindToUnit(0);
+            bindToImageUnit(0, GL_WRITE_ONLY);
+            glDispatchCompute(Engine.NUM_GROUPS_X, Engine.NUM_GROUPS_Y, 1);
+            glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        } else
+            throw new IllegalArgumentException("Not supported copying format: " + this.format);
+    }
+
     public void bindToUnit(int unit) {
         glActiveTexture(GL_TEXTURE0 + unit);
         glBindTexture(GL_TEXTURE_2D, textureId);
@@ -124,30 +138,10 @@ public class Texture {
         TEXTURES_TO_CLEANUP.clear();
     }
 
-    public static void initClearPrograms() {
-        initClearRProgram();
-        initClearRGProgram();
-        initClearRGBProgram();
-    }
-
-    private static void initClearRProgram() {
-        clearRProgram = new ShaderProgram(true);
-        Shader shader = new Shader("shaders/clearR.glsl", GL_COMPUTE_SHADER);
-        clearRProgram.attachShader(shader);
-        clearRProgram.link();
-    }
-
-    private static void initClearRGProgram() {
-        clearRGProgram = new ShaderProgram(true);
-        Shader shader = new Shader("shaders/clearRG.glsl", GL_COMPUTE_SHADER);
-        clearRGProgram.attachShader(shader);
-        clearRGProgram.link();
-    }
-
-    private static void initClearRGBProgram() {
-        clearRGBProgram = new ShaderProgram(true);
-        Shader shader = new Shader("shaders/clearRGB.glsl", GL_COMPUTE_SHADER);
-        clearRGBProgram.attachShader(shader);
-        clearRGBProgram.link();
+    public static void initPrograms() {
+        clearRProgram = ShaderProgram.createComputeProgram("shaders/clearR.glsl");
+        clearRGProgram = ShaderProgram.createComputeProgram("shaders/clearRG.glsl");
+        clearRGBProgram = ShaderProgram.createComputeProgram("shaders/clearRGB.glsl");
+        copyRGProgram = ShaderProgram.createComputeProgram("shaders/copyRG.glsl");
     }
 }

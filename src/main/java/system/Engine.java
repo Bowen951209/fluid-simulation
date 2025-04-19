@@ -68,6 +68,8 @@ public class Engine {
         velocities.swapReadWrite();
         diffuse(velocities, 0.1f, deltaTime);
         project();
+        velocities.getWriteTexture().copyFrom(velocities.getReadTexture());
+        velocities.swapReadWrite();
         advect(velocities, deltaTime);
         project();
     }
@@ -195,6 +197,6 @@ public class Engine {
         subtractPressureProgram = ShaderProgram.createComputeProgram("shaders/subtractPressure.glsl");
         divergenceProgram = ShaderProgram.createComputeProgram("shaders/divergence.glsl");
         sourcesFromUIProgram = ShaderProgram.createComputeProgram("shaders/addSourcesFromUI.glsl");
-        Texture.initClearPrograms();
+        Texture.initPrograms();
     }
 }
