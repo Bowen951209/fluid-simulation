@@ -98,6 +98,8 @@ public class App {
                 userInputBuffer.put(0);
             }
 
+            // This check can prevent the bug of not updating user input texture.
+            if(!engine.hasCleared()) engine.clear();
 
             // Mouse dragging logic:
             ypos = height - ypos; // Invert Y coordinate

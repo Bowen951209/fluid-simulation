@@ -18,6 +18,11 @@ public class Engine {
     private final Texture pressure;
     private final Texture userInputTexture;
 
+    /**
+     * Whether {@link #clear()} method was ever called.
+     */
+    private boolean hasCleared;
+
     public Engine() {
         densities = new PingPongTexture(N + 2, N + 2, GL_R32F, GL_RED, null, true);
         velocities = new PingPongTexture(N + 2, N + 2, GL_RG32F, GL_RG, null, true);
@@ -32,6 +37,8 @@ public class Engine {
     public void clear() {
         densities.clearData();
         velocities.clearData();
+
+        hasCleared = true;
     }
 
     public Texture getDensityTexture() {
@@ -44,6 +51,10 @@ public class Engine {
 
     public Texture getUserInputTexture() {
         return userInputTexture;
+    }
+
+    public boolean hasCleared() {
+        return hasCleared;
     }
 
     public void step(float deltaTime) {
