@@ -11,7 +11,6 @@ uniform float b;
 // A jacobi iteration program for pressure solver. 20 ~ 50 iterations required.
 void main() {
     ivec2 storePos = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 size = imageSize(img);
 
     // Read the values of the current grid point and its four neighbors
     float left   = imageLoad(img, storePos + ivec2(-1, 0)).r;

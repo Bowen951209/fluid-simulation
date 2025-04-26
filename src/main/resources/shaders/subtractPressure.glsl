@@ -16,7 +16,7 @@ void main() {
     float pT = texelFetchOffset(pressureSampler, texelPos, 0, ivec2(0, 1)).x;
 
     vec2 velocity = imageLoad(velocityImg, texelPos).xy;
-    velocity += h  * vec2(pR - pL, pT - pB);
+    velocity += h * vec2(pR - pL, pT - pB);
 
     imageStore(velocityImg, texelPos, vec4(velocity, 0.0, 0.0));
 }
