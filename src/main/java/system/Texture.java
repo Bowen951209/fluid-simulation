@@ -16,6 +16,8 @@ public class Texture {
     private final int height;
     private final int format;
     private final int internalFormat;
+    private final int numGroupX;
+    private final int numGroupY;
 
     public Texture(int width, int height, int internalFormat, int format, ByteBuffer data, boolean autoCleanup) {
         this.width = width;
@@ -23,6 +25,8 @@ public class Texture {
         this.internalFormat = internalFormat;
         this.format = format;
         this.textureId = glGenTextures();
+        this.numGroupX = (width + Engine.NUM_LOCAL_SIZE_X - 1) / Engine.NUM_LOCAL_SIZE_X;
+        this.numGroupY = (height + Engine.NUM_LOCAL_SIZE_Y - 1) / Engine.NUM_LOCAL_SIZE_Y;
 
         glBindTexture(GL_TEXTURE_2D, textureId);
 
@@ -91,7 +95,7 @@ public class Texture {
 
         program.use();
         bindToImageUnit(0, GL_WRITE_ONLY);
-        glDispatchCompute(Engine.NUM_GROUPS_X, Engine.NUM_GROUPS_Y, 1);
+        glDispatchCompute(numGroupX, numGroupY, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 
@@ -103,7 +107,7 @@ public class Texture {
             copyRGProgram.use();
             texture.bindToUnit(0);
             bindToImageUnit(0, GL_WRITE_ONLY);
-            glDispatchCompute(Engine.NUM_GROUPS_X, Engine.NUM_GROUPS_Y, 1);
+            glDispatchCompute(numGroupX, numGroupY, 1);
             glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
         } else
             throw new IllegalArgumentException("Not supported copying format: " + this.format);
