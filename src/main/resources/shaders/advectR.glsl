@@ -15,7 +15,7 @@ void main() {
     vec2 velocity = texelFetch(velocitySamp, storePos, 0).xy;
 
     // Backtrace position (in texel space)
-    vec2 pos = vec2(storePos) - velocity * deltaTime0;
+    vec2 pos = vec2(storePos) + 0.5 - velocity * deltaTime0;
 
     // Normalize to [0,1] for texture sampling
     vec2 texSize = vec2(textureSize(sourceFieldSamp, 0));
