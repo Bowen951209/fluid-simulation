@@ -11,9 +11,9 @@ public class Engine {
     public static final int TEXTURE_SIZE = N + 2;
     public static final int NUM_LOCAL_SIZE_X = 16;
     public static final int NUM_LOCAL_SIZE_Y = 16;
-    public static final int NUM_GROUPS_X = (TEXTURE_SIZE + NUM_LOCAL_SIZE_X - 1) / NUM_LOCAL_SIZE_X;
-    public static final int NUM_GROUPS_Y = (TEXTURE_SIZE + NUM_LOCAL_SIZE_Y - 1) / NUM_LOCAL_SIZE_Y;
-    public static final int SET_BOUND_NUM_GROUPS = 4 * N - 4;
+    public static final int NUM_GROUPS_X = getNumGroupsX(TEXTURE_SIZE);
+    public static final int NUM_GROUPS_Y = getNumGroupsY(TEXTURE_SIZE);
+    public static final int SET_BOUND_NUM_GROUPS = getNumGroupsX(4 * N - 4);
     private static final int JACOBI_ITERATION_COUNT = 40;
     private static ShaderProgram addSourceProgramRG, addSourceProgramR, jacobiProgramR, jacobiProgramRG, advectProgramR,
             advectProgramRG, subtractPressureProgram, divergenceProgram, setBoundProgram;
@@ -276,5 +276,13 @@ public class Engine {
         subtractPressureProgram = ShaderProgram.createComputeProgram("shaders/subtractPressure.glsl");
         divergenceProgram = ShaderProgram.createComputeProgram("shaders/divergence.glsl");
         setBoundProgram = ShaderProgram.createComputeProgram("shaders/setBound.glsl");
+    }
+
+    private static int getNumGroupsX(int size) {
+        return (size + NUM_LOCAL_SIZE_X - 1) / NUM_LOCAL_SIZE_X;
+    }
+
+    private static int getNumGroupsY(int size) {
+        return (size + NUM_LOCAL_SIZE_Y - 1) / NUM_LOCAL_SIZE_Y;
     }
 }
