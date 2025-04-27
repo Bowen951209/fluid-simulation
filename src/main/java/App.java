@@ -159,6 +159,7 @@ public class App {
     private void initTextures() {
         // For the user input texture
         userInputBuffer = BufferUtils.createFloatBuffer(width * height * 3);
+        Texture.initPrograms();
     }
 
     private void initShaders() {

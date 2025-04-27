@@ -223,6 +223,5 @@ public class Engine {
         divergenceProgram = ShaderProgram.createComputeProgram("shaders/divergence.glsl");
         sourcesFromUIProgram = ShaderProgram.createComputeProgram("shaders/addSourcesFromUI.glsl");
         setBoundProgram = ShaderProgram.createComputeProgram("shaders/setBound.glsl");
-        Texture.initPrograms();
     }
 }
