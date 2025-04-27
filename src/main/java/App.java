@@ -103,28 +103,11 @@ public class App {
 
             // Mouse dragging logic:
             ypos = height - ypos; // Invert Y coordinate
-            int index = (int) (ypos * width + xpos) * 3;
 
             float velocityX = (float) (xpos - lastMouseX) * 10f;
             float velocityY = (float) (ypos - lastMouseY) * 10f;
 
-
-            int halfSize = 2;
-            for (int i = -halfSize; i <= halfSize; i++) {
-                for (int j = -halfSize; j <= halfSize; j++) {
-                    int offsetIndex = index + (i * width + j) * 3;
-                    if (offsetIndex < 0 || offsetIndex >= userInputBuffer.capacity() - 3) {
-                        continue; // Out of bounds
-                    }
-                    userInputBuffer.put(offsetIndex, velocityX);
-                    userInputBuffer.put(offsetIndex + 1, velocityY);
-                    userInputBuffer.put(offsetIndex + 2, 3f); // density
-                }
-            }
-            lastMouseX = (int) xpos;
-            lastMouseY = (int) ypos;
-            userInputBuffer.flip();
-            engine.getUserInputTexture().putData(userInputBuffer);
+            engine.userInput((int) xpos, (int) ypos);
         });
 
         // Get the thread stack and push a new frame
@@ -277,6 +260,6 @@ public class App {
     }
 
     public static void main(String[] args) {
-        new App().run(200, 200, "Fluid Simulation");
+        new App().run(600, 600, "Fluid Simulation");
     }
 }

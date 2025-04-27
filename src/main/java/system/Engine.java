@@ -1,23 +1,34 @@
 package system;
 
+import org.lwjgl.BufferUtils;
+
+import java.nio.FloatBuffer;
+
 import static org.lwjgl.opengl.GL43.*;
 
 public class Engine {
-    private static final int N = 200;
-    private static final int JACOBI_ITERATION_COUNT = 40;
+    public static final int N = 200;
+    public static final int TEXTURE_SIZE = N + 2;
     public static final int NUM_LOCAL_SIZE_X = 16;
     public static final int NUM_LOCAL_SIZE_Y = 16;
-    public static final int NUM_GROUPS_X = (N + NUM_LOCAL_SIZE_X - 1) / NUM_LOCAL_SIZE_X;
-    public static final int NUM_GROUPS_Y = (N + NUM_LOCAL_SIZE_Y - 1) / NUM_LOCAL_SIZE_Y;
+    public static final int NUM_GROUPS_X = (TEXTURE_SIZE + NUM_LOCAL_SIZE_X - 1) / NUM_LOCAL_SIZE_X;
+    public static final int NUM_GROUPS_Y = (TEXTURE_SIZE + NUM_LOCAL_SIZE_Y - 1) / NUM_LOCAL_SIZE_Y;
     public static final int SET_BOUND_NUM_GROUPS = 4 * N - 4;
+    private static final int JACOBI_ITERATION_COUNT = 40;
     private static ShaderProgram addSourceProgramRG, addSourceProgramR, jacobiProgramR, jacobiProgramRG, advectProgramR,
-            advectProgramRG, subtractPressureProgram, divergenceProgram, sourcesFromUIProgram, setBoundProgram;
+            advectProgramRG, subtractPressureProgram, divergenceProgram, setBoundProgram;
 
     private final PingPongTexture densities;
     private final PingPongTexture velocities;
     private final Texture divergence;
     private final Texture pressure;
-    private final Texture userInputTexture;
+    private final FloatBuffer userInputVelocityBuffer;
+    private final FloatBuffer userInputDensityBuffer;
+    private final float[][][] userInputVelocityArray;
+    private final float[][] userInputDensityArray;
+
+    private int lastMouseX;
+    private int lastMouseY;
 
     /**
      * Whether {@link #clear()} method was ever called.
@@ -25,11 +36,14 @@ public class Engine {
     private boolean hasCleared;
 
     public Engine() {
-        densities = new PingPongTexture(N + 2, N + 2, GL_R32F, GL_RED, null, true);
-        velocities = new PingPongTexture(N + 2, N + 2, GL_RG32F, GL_RG, null, true);
-        divergence = new Texture(N + 2, N + 2, GL_R32F, GL_RED, null, true);
-        pressure = new Texture(N + 2, N + 2, GL_R32F, GL_RED, null, true);
-        userInputTexture = new Texture(N, N, GL_RGBA32F, GL_RGB, null, true);
+        densities = new PingPongTexture(TEXTURE_SIZE, TEXTURE_SIZE, GL_R32F, GL_RED, null, true);
+        velocities = new PingPongTexture(TEXTURE_SIZE, TEXTURE_SIZE, GL_RG32F, GL_RG, null, true);
+        divergence = new Texture(TEXTURE_SIZE, TEXTURE_SIZE, GL_R32F, GL_RED, null, true);
+        pressure = new Texture(TEXTURE_SIZE, TEXTURE_SIZE, GL_R32F, GL_RED, null, true);
+        userInputVelocityArray = new float[TEXTURE_SIZE][TEXTURE_SIZE][2];
+        userInputVelocityBuffer = BufferUtils.createFloatBuffer(TEXTURE_SIZE * TEXTURE_SIZE * 2);
+        userInputDensityArray = new float[TEXTURE_SIZE][TEXTURE_SIZE];
+        userInputDensityBuffer = BufferUtils.createFloatBuffer(TEXTURE_SIZE * TEXTURE_SIZE);
     }
 
     /**
@@ -42,6 +56,30 @@ public class Engine {
         hasCleared = true;
     }
 
+    public void userInput(int mouseX, int mouseY) {
+        float velocityX = (float) (mouseX - lastMouseX) * 10;
+        float velocityY = (float) (mouseY - lastMouseY) * 10;
+
+        int halfSize = 2;
+        for (int i = -halfSize; i <= halfSize; i++) {
+            for (int j = -halfSize; j <= halfSize; j++) {
+                int x = mouseX + i;
+                int y = mouseY + j;
+
+                if (x < 0 || x >= TEXTURE_SIZE || y < 0 || y >= TEXTURE_SIZE) {
+                    continue; // Skip out-of-bounds coordinates
+                }
+
+                userInputVelocityArray[x][y][0] = velocityX;
+                userInputVelocityArray[x][y][1] = velocityY;
+                userInputDensityArray[x][y] = 1.0f;
+            }
+        }
+
+        lastMouseX = mouseX;
+        lastMouseY = mouseY;
+    }
+
     public Texture getDensityTexture() {
         return densities.getWriteTexture();
     }
@@ -50,17 +88,12 @@ public class Engine {
         return velocities.getWriteTexture();
     }
 
-    public Texture getUserInputTexture() {
-        return userInputTexture;
-    }
-
     public boolean hasCleared() {
         return hasCleared;
     }
 
     public void step(float deltaTime) {
         getSourcesFromUI();
-        userInputTexture.clearData();
         velocityStep(deltaTime);
         densityStep(deltaTime);
 
@@ -192,12 +225,33 @@ public class Engine {
     }
 
     private void getSourcesFromUI() {
-        userInputTexture.bindToUnit(0);
-        velocities.getReadTexture().bindToImageUnit(1, GL_WRITE_ONLY);
-        densities.getReadTexture().bindToImageUnit(0, GL_WRITE_ONLY);
-        sourcesFromUIProgram.use();
-        glDispatchCompute(NUM_GROUPS_X, NUM_GROUPS_Y, 1);
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        // Reset buffers.
+        userInputVelocityBuffer.clear();
+        userInputDensityBuffer.clear();
+
+        // Copy user input data to buffers.
+        for (int i = 0; i < TEXTURE_SIZE; i++) {
+            for (int j = 0; j < TEXTURE_SIZE; j++) {
+                // Notice that the order of the array is inverted.
+                userInputVelocityBuffer.put(userInputVelocityArray[j][i]);
+                userInputDensityBuffer.put(userInputDensityArray[j][i]);
+            }
+        }
+        userInputVelocityBuffer.flip();
+        userInputDensityBuffer.flip();
+
+        // Copy data to textures.
+        velocities.getReadTexture().putData(userInputVelocityBuffer);
+        densities.getReadTexture().putData(userInputDensityBuffer);
+
+        // Clear arrays.
+        for (int i = 0; i < TEXTURE_SIZE; i++) {
+            for (int j = 0; j < TEXTURE_SIZE; j++) {
+                userInputVelocityArray[i][j][0] = 0;
+                userInputVelocityArray[i][j][1] = 0;
+                userInputDensityArray[i][j] = 0;
+            }
+        }
     }
 
     private void setBound() {
@@ -221,7 +275,6 @@ public class Engine {
         advectProgramRG = ShaderProgram.createComputeProgram("shaders/advectRG.glsl");
         subtractPressureProgram = ShaderProgram.createComputeProgram("shaders/subtractPressure.glsl");
         divergenceProgram = ShaderProgram.createComputeProgram("shaders/divergence.glsl");
-        sourcesFromUIProgram = ShaderProgram.createComputeProgram("shaders/addSourcesFromUI.glsl");
         setBoundProgram = ShaderProgram.createComputeProgram("shaders/setBound.glsl");
     }
 }
