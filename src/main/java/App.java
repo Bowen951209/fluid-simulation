@@ -27,7 +27,7 @@ public class App {
     private ShaderProgram screenProgram;
     private FloatBuffer userInputBuffer;
     private List<VAO> vaos;
-    private int width, height, lastMouseX, lastMouseY;
+    private int width, height;
     private float deltaTime;
     private Engine engine;
     private int renderMode;
@@ -104,8 +104,8 @@ public class App {
             // Mouse dragging logic:
             ypos = height - ypos; // Invert Y coordinate
 
-            float velocityX = (float) (xpos - lastMouseX) * 10f;
-            float velocityY = (float) (ypos - lastMouseY) * 10f;
+            xpos *= ((double) Engine.N / width);
+            ypos *= ((double) Engine.N / height);
 
             engine.userInput((int) xpos, (int) ypos);
         });
