@@ -45,7 +45,9 @@ public class App {
         initTextures();
         initBufferObjects();
         Engine.init();
-        engine = new Engine();
+
+        float scale = 0.25f;
+        engine = new Engine((int) (width * scale), (int) (height * scale));
 
         loop();
         free();
@@ -104,8 +106,8 @@ public class App {
             // Mouse dragging logic:
             ypos = height - ypos; // Invert Y coordinate
 
-            xpos *= ((double) Engine.N / width);
-            ypos *= ((double) Engine.N / height);
+            xpos *= ((double) engine.nX / width);
+            ypos *= ((double) engine.nY / height);
 
             engine.userInput((int) xpos, (int) ypos);
         });
@@ -260,6 +262,6 @@ public class App {
     }
 
     public static void main(String[] args) {
-        new App().run(600, 600, "Fluid Simulation");
+        new App().run(800, 600, "Fluid Simulation");
     }
 }

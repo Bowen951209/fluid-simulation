@@ -7,17 +7,19 @@ import java.nio.FloatBuffer;
 import static org.lwjgl.opengl.GL43.*;
 
 public class Engine {
-    public static final int N = 200;
-    public static final int TEXTURE_SIZE = N + 2;
     public static final int NUM_LOCAL_SIZE_X = 16;
     public static final int NUM_LOCAL_SIZE_Y = 16;
-    public static final int NUM_GROUPS_X = getNumGroupsX(TEXTURE_SIZE);
-    public static final int NUM_GROUPS_Y = getNumGroupsY(TEXTURE_SIZE);
-    public static final int SET_BOUND_NUM_GROUPS = getNumGroupsX(4 * N - 4);
     private static final int JACOBI_ITERATION_COUNT = 40;
     private static ShaderProgram addSourceProgramRG, addSourceProgramR, jacobiProgramR, jacobiProgramRG, advectProgramR,
             advectProgramRG, subtractPressureProgram, divergenceProgram, setBoundProgram;
 
+    public final int nX;
+    public final int nY;
+    public final int textureWidth;
+    public final int textureHeight;
+    public final int numGroupsX;
+    public final int numGroupsY;
+    public final int setBoundNumGroups;
     private final PingPongTexture densities;
     private final PingPongTexture velocities;
     private final Texture divergence;
@@ -35,15 +37,22 @@ public class Engine {
      */
     private boolean hasCleared;
 
-    public Engine() {
-        densities = new PingPongTexture(TEXTURE_SIZE, TEXTURE_SIZE, GL_R32F, GL_RED, null, true);
-        velocities = new PingPongTexture(TEXTURE_SIZE, TEXTURE_SIZE, GL_RG32F, GL_RG, null, true);
-        divergence = new Texture(TEXTURE_SIZE, TEXTURE_SIZE, GL_R32F, GL_RED, null, true);
-        pressure = new Texture(TEXTURE_SIZE, TEXTURE_SIZE, GL_R32F, GL_RED, null, true);
-        userInputVelocityArray = new float[TEXTURE_SIZE][TEXTURE_SIZE][2];
-        userInputVelocityBuffer = BufferUtils.createFloatBuffer(TEXTURE_SIZE * TEXTURE_SIZE * 2);
-        userInputDensityArray = new float[TEXTURE_SIZE][TEXTURE_SIZE];
-        userInputDensityBuffer = BufferUtils.createFloatBuffer(TEXTURE_SIZE * TEXTURE_SIZE);
+    public Engine(int nX, int nY) {
+        this.nX = nX;
+        this.nY = nY;
+        this.textureWidth = nX + 2;
+        this.textureHeight = nY + 2;
+        this.numGroupsX = getNumGroupsX(textureWidth);
+        this.numGroupsY = getNumGroupsY(textureHeight);
+        this.setBoundNumGroups = getNumGroupsX(2 * (textureWidth + textureHeight) - 4);
+        this.densities = new PingPongTexture(textureWidth, textureHeight, GL_R32F, GL_RED, null, true);
+        this.velocities = new PingPongTexture(textureWidth, textureHeight, GL_RG32F, GL_RG, null, true);
+        this.divergence = new Texture(textureWidth, textureHeight, GL_R32F, GL_RED, null, true);
+        this.pressure = new Texture(textureWidth, textureHeight, GL_R32F, GL_RED, null, true);
+        this.userInputVelocityArray = new float[textureWidth][textureHeight][2];
+        this.userInputVelocityBuffer = BufferUtils.createFloatBuffer(textureWidth * textureHeight * 2);
+        this.userInputDensityArray = new float[textureWidth][textureHeight];
+        this.userInputDensityBuffer = BufferUtils.createFloatBuffer(textureWidth * textureHeight);
     }
 
     /**
@@ -66,7 +75,7 @@ public class Engine {
                 int x = mouseX + i;
                 int y = mouseY + j;
 
-                if (x < 0 || x >= TEXTURE_SIZE || y < 0 || y >= TEXTURE_SIZE) {
+                if (x < 0 || x >= textureWidth || y < 0 || y >= textureHeight) {
                     continue; // Skip out-of-bounds coordinates
                 }
 
@@ -130,7 +139,7 @@ public class Engine {
         program.use();
         program.setUniform("deltaTime", deltaTime);
 
-        glDispatchCompute(NUM_GROUPS_X, NUM_GROUPS_Y, 1);
+        glDispatchCompute(numGroupsX, numGroupsY, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 
@@ -144,13 +153,13 @@ public class Engine {
         boolean isVelocity = readTexture.getFormat() == GL_RG;
         ShaderProgram program = isVelocity ? jacobiProgramRG : jacobiProgramR;
         program.use();
-        float a = deltaTime * rate * N * N;
+        float a = deltaTime * rate * nX * nY;
         float b = 1f / (1 + 4 * a);
         program.setUniform("a", a);
         program.setUniform("b", b);
 
         for (int i = 0; i < JACOBI_ITERATION_COUNT; i++) {
-            glDispatchCompute(NUM_GROUPS_X, NUM_GROUPS_Y, 1);
+            glDispatchCompute(numGroupsX, numGroupsY, 1);
             glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
             if (isVelocity) setBound();
@@ -168,10 +177,10 @@ public class Engine {
         boolean isVelocity = readTexture.getFormat() == GL_RG;
         ShaderProgram program = isVelocity ? advectProgramRG : advectProgramR;
         program.use();
-        float deltaTime0 = deltaTime * N;
+        float deltaTime0 = deltaTime * nX;
         program.setUniform("deltaTime0", deltaTime0);
 
-        glDispatchCompute(NUM_GROUPS_X, NUM_GROUPS_Y, 1);
+        glDispatchCompute(numGroupsX, numGroupsY, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
         if (isVelocity) setBound();
@@ -191,10 +200,10 @@ public class Engine {
 
 
         divergenceProgram.use();
-        float h = -0.5f / N;
+        float h = -0.5f / nX;
         divergenceProgram.setUniform("h", h);
 
-        glDispatchCompute(NUM_GROUPS_X, NUM_GROUPS_Y, 1);
+        glDispatchCompute(numGroupsX, numGroupsY, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 
@@ -208,7 +217,7 @@ public class Engine {
         jacobiProgramR.setUniform("b", 0.25f);
 
         for (int i = 0; i < JACOBI_ITERATION_COUNT; i++) {
-            glDispatchCompute(NUM_GROUPS_X, NUM_GROUPS_Y, 1);
+            glDispatchCompute(numGroupsX, numGroupsY, 1);
             glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
         }
     }
@@ -217,10 +226,10 @@ public class Engine {
         pressure.bindToUnit(0);
 
         subtractPressureProgram.use();
-        float h = -0.5f * N;
+        float h = -0.5f * nX;
         subtractPressureProgram.setUniform("h", h);
 
-        glDispatchCompute(NUM_GROUPS_X, NUM_GROUPS_Y, 1);
+        glDispatchCompute(numGroupsX, numGroupsY, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 
@@ -230,8 +239,8 @@ public class Engine {
         userInputDensityBuffer.clear();
 
         // Copy user input data to buffers.
-        for (int i = 0; i < TEXTURE_SIZE; i++) {
-            for (int j = 0; j < TEXTURE_SIZE; j++) {
+        for (int i = 0; i < textureHeight; i++) {
+            for (int j = 0; j < textureWidth; j++) {
                 // Notice that the order of the array is inverted.
                 userInputVelocityBuffer.put(userInputVelocityArray[j][i]);
                 userInputDensityBuffer.put(userInputDensityArray[j][i]);
@@ -245,8 +254,8 @@ public class Engine {
         densities.getReadTexture().putData(userInputDensityBuffer);
 
         // Clear arrays.
-        for (int i = 0; i < TEXTURE_SIZE; i++) {
-            for (int j = 0; j < TEXTURE_SIZE; j++) {
+        for (int i = 0; i < textureWidth; i++) {
+            for (int j = 0; j < textureHeight; j++) {
                 userInputVelocityArray[i][j][0] = 0;
                 userInputVelocityArray[i][j][1] = 0;
                 userInputDensityArray[i][j] = 0;
@@ -256,7 +265,7 @@ public class Engine {
 
     private void setBound() {
         setBoundProgram.use();
-        glDispatchCompute(SET_BOUND_NUM_GROUPS, 1, 1);
+        glDispatchCompute(setBoundNumGroups, 1, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 
