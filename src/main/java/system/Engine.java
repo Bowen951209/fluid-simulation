@@ -2,6 +2,7 @@ package system;
 
 import org.lwjgl.BufferUtils;
 
+import java.awt.*;
 import java.nio.FloatBuffer;
 
 import static org.lwjgl.opengl.GL43.*;
@@ -20,6 +21,7 @@ public class Engine {
     public final int numGroupsX;
     public final int numGroupsY;
     public final int setBoundNumGroups;
+    private final FontRenderer fontRenderer;
     private final PingPongTexture densities;
     private final PingPongTexture velocities;
     private final Texture divergence;
@@ -53,6 +55,7 @@ public class Engine {
         this.userInputVelocityBuffer = BufferUtils.createFloatBuffer(textureWidth * textureHeight * 2);
         this.userInputDensityArray = new float[textureWidth][textureHeight];
         this.userInputDensityBuffer = BufferUtils.createFloatBuffer(textureWidth * textureHeight);
+        this.fontRenderer = new FontRenderer(new Font(Font.SANS_SERIF, Font.PLAIN, 36), userInputDensityArray);
     }
 
     /**
@@ -63,6 +66,7 @@ public class Engine {
         velocities.clearData();
 
         hasCleared = true;
+        System.out.println("Cleared simulation data");
     }
 
     public void userInput(int mouseX, int mouseY) {
@@ -89,6 +93,14 @@ public class Engine {
         lastMouseY = mouseY;
     }
 
+    public void userInput(String text, int x, int y) {
+        fontRenderer.renderToArray(text, x, y);
+    }
+
+    public void dispose() {
+        fontRenderer.dispose();
+    }
+
     public Texture getDensityTexture() {
         return densities.getWriteTexture();
     }
@@ -97,11 +109,10 @@ public class Engine {
         return velocities.getWriteTexture();
     }
 
-    public boolean hasCleared() {
-        return hasCleared;
-    }
-
     public void step(float deltaTime) {
+        // This check can prevent the bug of not updating user input texture.
+        if(!hasCleared) clear();
+
         getSourcesFromUI();
         velocityStep(deltaTime);
         densityStep(deltaTime);

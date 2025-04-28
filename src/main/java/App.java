@@ -31,6 +31,7 @@ public class App {
     private float deltaTime;
     private Engine engine;
     private int renderMode;
+    private boolean controlPressed;
 
     public void run(int width, int height, String title) {
         this.width = width;
@@ -75,7 +76,9 @@ public class App {
 
         // Setup a key callback. It will be called every time a key is pressed, repeated or released.
         glfwSetKeyCallback(window, (window, key, scancode, action, mods) -> {
-            if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
+            if (key == GLFW_KEY_LEFT_CONTROL || key == GLFW_KEY_RIGHT_CONTROL) {
+                controlPressed = action != GLFW_RELEASE;
+            } else if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
                 glfwSetWindowShouldClose(window, true); // We will detect this in the rendering loop
             } else if (key == GLFW_KEY_F1 && action == GLFW_PRESS) {
                 renderMode = RENDER_MODE_DENSITY;
@@ -85,7 +88,10 @@ public class App {
                 System.out.println("Render mode: VELOCITY");
             } else if (key == GLFW_KEY_F3 && action == GLFW_PRESS) {
                 engine.clear();
-                System.out.println("Cleared simulation data");
+            } else if (key == GLFW_KEY_V && controlPressed && action == GLFW_PRESS) {
+                String clipboardString = ClipBoardReader.getClipboardString();
+                System.out.println("Clipboard: " + clipboardString);
+                engine.userInput(clipboardString, 10, 50);
             }
         });
 
@@ -99,9 +105,6 @@ public class App {
             for (int i = 0; i < userInputBuffer.capacity(); i++) {
                 userInputBuffer.put(0);
             }
-
-            // This check can prevent the bug of not updating user input texture.
-            if(!engine.hasCleared()) engine.clear();
 
             // Mouse dragging logic:
             ypos = height - ypos; // Invert Y coordinate
@@ -242,6 +245,7 @@ public class App {
     }
 
     private void free() {
+        engine.dispose();
         Texture.cleanupAll();
         ShaderProgram.cleanupAll();
         BufferObject.cleanupAll();
