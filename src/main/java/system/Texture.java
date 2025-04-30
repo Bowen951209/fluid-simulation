@@ -2,6 +2,7 @@ package system;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -10,7 +11,8 @@ import static org.lwjgl.opengl.GL43.*;
 public class Texture {
     private static final Set<Texture> TEXTURES_TO_CLEANUP = new HashSet<>();
 
-    private static ShaderProgram clearRProgram, clearRGProgram, clearRGBProgram, copyRGProgram;
+    private static MultiProgramManager clearProgramMgr;
+    private static ShaderProgram copyRGProgram;
     private final int textureId;
     private final int width;
     private final int height;
@@ -84,11 +86,11 @@ public class Texture {
     public void clearData() {
         ShaderProgram program;
         if (format == GL_RG) {
-            program = clearRGProgram;
+            program = clearProgramMgr.getProgramRG();
         } else if (format == GL_RED) {
-            program = clearRProgram;
+            program = clearProgramMgr.getProgramR();
         } else if (format == GL_RGB) {
-            program = clearRGBProgram;
+            program = clearProgramMgr.getProgramRGBA();
         } else {
             throw new IllegalArgumentException("Unsupported format: " + format);
         }
@@ -143,9 +145,8 @@ public class Texture {
     }
 
     public static void initPrograms() {
-        clearRProgram = ShaderProgram.createComputeProgramFromFile("shaders/clearR.glsl");
-        clearRGProgram = ShaderProgram.createComputeProgramFromFile("shaders/clearRG.glsl");
-        clearRGBProgram = ShaderProgram.createComputeProgramFromFile("shaders/clearRGB.glsl");
+        var flag = EnumSet.of(MultiProgramManager.Formats.R, MultiProgramManager.Formats.RG, MultiProgramManager.Formats.RGBA);
+        clearProgramMgr = new MultiProgramManager("shaders/clear.glsl", flag);
         copyRGProgram = ShaderProgram.createComputeProgramFromFile("shaders/copyRG.glsl");
     }
 }
