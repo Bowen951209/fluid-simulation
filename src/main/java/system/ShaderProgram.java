@@ -64,7 +64,7 @@ public class ShaderProgram {
         Integer location = uniformLocations.get(name);
         if (location == null) {
             location = glGetUniformLocation(programId, name);
-            if(location == -1) System.err.println("Could not find uniform variable '" + name + "'");
+            if (location == -1) System.err.println("Could not find uniform variable '" + name + "'");
             uniformLocations.put(name, location);
         }
 
@@ -81,9 +81,18 @@ public class ShaderProgram {
         glUniform2f(getUniformLocation(name), value1, value2);
     }
 
-    public static ShaderProgram createComputeProgram(String file) {
+    public static ShaderProgram createComputeProgramFromFile(String file) {
         ShaderProgram computeProgram = new ShaderProgram(true);
-        Shader shader = new Shader(file, GL_COMPUTE_SHADER);
+        Shader shader = Shader.createFromFile(file, GL_COMPUTE_SHADER);
+        computeProgram.attachShader(shader);
+        computeProgram.link();
+
+        return computeProgram;
+    }
+
+    public static ShaderProgram createComputeProgramFromSource(String source) {
+        ShaderProgram computeProgram = new ShaderProgram(true);
+        Shader shader = Shader.createFromSource(source, GL_COMPUTE_SHADER);
         computeProgram.attachShader(shader);
         computeProgram.link();
 

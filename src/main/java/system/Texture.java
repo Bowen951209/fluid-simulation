@@ -143,9 +143,9 @@ public class Texture {
     }
 
     public static void initPrograms() {
-        clearRProgram = ShaderProgram.createComputeProgram("shaders/clearR.glsl");
-        clearRGProgram = ShaderProgram.createComputeProgram("shaders/clearRG.glsl");
-        clearRGBProgram = ShaderProgram.createComputeProgram("shaders/clearRGB.glsl");
-        copyRGProgram = ShaderProgram.createComputeProgram("shaders/copyRG.glsl");
+        clearRProgram = ShaderProgram.createComputeProgramFromFile("shaders/clearR.glsl");
+        clearRGProgram = ShaderProgram.createComputeProgramFromFile("shaders/clearRG.glsl");
+        clearRGBProgram = ShaderProgram.createComputeProgramFromFile("shaders/clearRGB.glsl");
+        copyRGProgram = ShaderProgram.createComputeProgramFromFile("shaders/copyRG.glsl");
     }
 }

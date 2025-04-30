@@ -148,8 +148,8 @@ public class App {
     }
 
     private void initShaders() {
-        Shader screenVertexShader = new Shader("shaders/vertex.glsl", GL_VERTEX_SHADER);
-        Shader screenFragmentShader = new Shader("shaders/fragment.glsl", GL_FRAGMENT_SHADER);
+        Shader screenVertexShader = Shader.createFromFile("shaders/vertex.glsl", GL_VERTEX_SHADER);
+        Shader screenFragmentShader = Shader.createFromFile("shaders/fragment.glsl", GL_FRAGMENT_SHADER);
 
         screenProgram = new ShaderProgram(true);
         screenProgram.attachShader(screenVertexShader);

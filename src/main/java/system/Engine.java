@@ -10,8 +10,8 @@ public class Engine {
     public static final int NUM_LOCAL_SIZE_X = 16;
     public static final int NUM_LOCAL_SIZE_Y = 16;
     private static final int JACOBI_ITERATION_COUNT = 40;
-    private static ShaderProgram addSourceProgramRG, addSourceProgramR, jacobiProgramR, jacobiProgramRG, advectProgramR,
-            advectProgramRG, subtractPressureProgram, divergenceProgram, setBoundProgram;
+    private static ShaderProgram subtractPressureProgram, divergenceProgram, setBoundProgram;
+    private static ShaderProgramRRG addSourceProgram, jacobiProgram, advectProgram;
 
     public final int nX;
     public final int nY;
@@ -135,7 +135,8 @@ public class Engine {
         readTexture.bindToUnit(0);
         writeTexture.bindToImageUnit(0, GL_READ_WRITE);
 
-        ShaderProgram program = readTexture.getFormat() == GL_RG ? addSourceProgramRG : addSourceProgramR;
+        boolean isVelocity = readTexture.getFormat() == GL_RG;
+        ShaderProgram program = isVelocity ? addSourceProgram.getProgramRG() : addSourceProgram.getProgramR();
         program.use();
         program.setUniform("deltaTime", deltaTime);
 
@@ -151,7 +152,7 @@ public class Engine {
         writeTexture.bindToImageUnit(0, GL_READ_WRITE);
 
         boolean isVelocity = readTexture.getFormat() == GL_RG;
-        ShaderProgram program = isVelocity ? jacobiProgramRG : jacobiProgramR;
+        ShaderProgram program = isVelocity ? jacobiProgram.getProgramRG() : jacobiProgram.getProgramR();
         program.use();
         float a = deltaTime * rate * nX * nY;
         float b = 1f / (1 + 4 * a);
@@ -175,7 +176,7 @@ public class Engine {
         writeTexture.bindToImageUnit(0, GL_READ_WRITE);
 
         boolean isVelocity = readTexture.getFormat() == GL_RG;
-        ShaderProgram program = isVelocity ? advectProgramRG : advectProgramR;
+        ShaderProgram program = isVelocity ? advectProgram.getProgramRG() : advectProgram.getProgramR();
         program.use();
         float deltaTime0 = deltaTime * nX;
         program.setUniform("deltaTime0", deltaTime0);
@@ -212,9 +213,10 @@ public class Engine {
         pressure.bindToImageUnit(0, GL_READ_WRITE);
 
 
-        jacobiProgramR.use();
-        jacobiProgramR.setUniform("a", 1f);
-        jacobiProgramR.setUniform("b", 0.25f);
+        ShaderProgram program = jacobiProgram.getProgramR();
+        program.use();
+        program.setUniform("a", 1f);
+        program.setUniform("b", 0.25f);
 
         for (int i = 0; i < JACOBI_ITERATION_COUNT; i++) {
             glDispatchCompute(numGroupsX, numGroupsY, 1);
@@ -276,15 +278,12 @@ public class Engine {
     }
 
     public static void init() {
-        addSourceProgramR = ShaderProgram.createComputeProgram("shaders/addSourceR.glsl");
-        addSourceProgramRG = ShaderProgram.createComputeProgram("shaders/addSourceRG.glsl");
-        jacobiProgramR = ShaderProgram.createComputeProgram("shaders/jacobiR.glsl");
-        jacobiProgramRG = ShaderProgram.createComputeProgram("shaders/jacobiRG.glsl");
-        advectProgramR = ShaderProgram.createComputeProgram("shaders/advectR.glsl");
-        advectProgramRG = ShaderProgram.createComputeProgram("shaders/advectRG.glsl");
-        subtractPressureProgram = ShaderProgram.createComputeProgram("shaders/subtractPressure.glsl");
-        divergenceProgram = ShaderProgram.createComputeProgram("shaders/divergence.glsl");
-        setBoundProgram = ShaderProgram.createComputeProgram("shaders/setBound.glsl");
+        addSourceProgram = new ShaderProgramRRG("shaders/addSource.glsl");
+        jacobiProgram = new ShaderProgramRRG("shaders/jacobi.glsl");
+        advectProgram = new ShaderProgramRRG("shaders/advect.glsl");
+        subtractPressureProgram = ShaderProgram.createComputeProgramFromFile("shaders/subtractPressure.glsl");
+        divergenceProgram = ShaderProgram.createComputeProgramFromFile("shaders/divergence.glsl");
+        setBoundProgram = ShaderProgram.createComputeProgramFromFile("shaders/setBound.glsl");
     }
 
     private static int getNumGroupsX(int size) {
