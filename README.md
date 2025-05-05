@@ -10,7 +10,11 @@ The project includes two implementations:
 
 ## 🖼️ Preview
 
-> (Insert a GIF or screenshot here to showcase the simulation in action)
+|  Density Render Mode   |  Velocity Render Mode   |
+|:----------------------:|:-----------------------:|
+| ![](media/density.gif) | ![](media/velocity.gif) |
+In velocity render mode, the x-component of velocity is mapped to the red channel🟥, and the y-component is mapped to the
+green channel🟩. Negative values in either component appear as black.
 
 ## 🔧 How To Run & Play?
 
@@ -56,7 +60,6 @@ slightly in how data is updated.
 
 Here's an old [Nvidia GPU Gems chapter](https://developer.nvidia.com/gpugems/gpugems/part-vi-beyond-triangles/chapter-38-fast-fluid-dynamics-simulation-gpu).
 Note that the framework used in it is deprecated, and some math notations appear broken, but it's still worth checking out.
-
 
 The `mothers-day-special` branch includes a fun feature not commonly found in fluid simulations.
 You can press `Ctrl + V` to render your clipboard text to the density field. This feature was a surprise for my mom on
