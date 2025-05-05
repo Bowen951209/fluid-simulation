@@ -40,14 +40,26 @@ public class AppSwing extends JFrame {
                 }
 
                 // Change render mode to density on F1 key press
-                if (evt.getKeyCode() == KeyEvent.VK_F1) {
+                else if (evt.getKeyCode() == KeyEvent.VK_F1) {
                     fluidPanel.renderMode = RENDER_MODE_DENSITY;
                     System.out.println("Render mode changed to DENSITY");
                 }
+
                 // Change render mode to velocity on F2 key press
-                if (evt.getKeyCode() == KeyEvent.VK_F2) {
+                else if (evt.getKeyCode() == KeyEvent.VK_F2) {
                     fluidPanel.renderMode = RENDER_MODE_VELOCITY;
                     System.out.println("Render mode changed to VELOCITY");
+                }
+
+                // Clear sources on F3 key press
+                else if (evt.getKeyCode() == KeyEvent.VK_F3) {
+                    clearSource(velocitiesX);
+                    clearSource(velocitiesY);
+                    clearSource(prevVelocitiesX);
+                    clearSource(prevVelocitiesY);
+                    clearSource(prevDensities);
+                    clearSource(densities);
+                    System.out.println("Cleared sources");
                 }
             }
         });
