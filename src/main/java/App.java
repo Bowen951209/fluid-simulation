@@ -1,10 +1,13 @@
+import org.lwjgl.BufferUtils;
 import org.lwjgl.Version;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
 import system.*;
 
+import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,25 +20,40 @@ import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
 public class App {
+    private static final int RENDER_MODE_DENSITY = 0;
+    private static final int RENDER_MODE_VELOCITY = 1;
+
     private long window;
-    private Texture quadTexture;
-    private ShaderProgram screenProgram, computeProgram;
+    private ShaderProgram screenProgram;
+    private FloatBuffer userInputBuffer;
     private List<VAO> vaos;
+    private int width, height;
+    private float deltaTime;
+    private Engine engine;
+    private int renderMode;
 
     public void run(int width, int height, String title) {
-        System.out.println("LWJGL Version:" + Version.getVersion() + "!");
+        this.width = width;
+        this.height = height;
 
-        initGLFW(width, height, title);
+        System.out.println("LWJGL Version:" + Version.getVersion() + "!");
+        System.out.println("Resolution: " + width + "x" + height);
+
+        initGLFW(title);
         GL.createCapabilities();
         initShaders();
-        initTextures(width, height);
+        initTextures();
         initBufferObjects();
+        Engine.init();
+
+        float scale = 0.25f;
+        engine = new Engine((int) (width * scale), (int) (height * scale));
 
         loop();
         free();
     }
 
-    private void initGLFW(int width, int height, String title) {
+    private void initGLFW(String title) {
         // Setup an error callback. The default implementation
         // will print the error message in System.err.
         GLFWErrorCallback.createPrint(System.err).set();
@@ -46,7 +64,7 @@ public class App {
 
         // Configure GLFW
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); // the window will stay hidden after creation
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // the window will be resizable
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // the window will not be resizable
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
@@ -57,8 +75,41 @@ public class App {
 
         // Setup a key callback. It will be called every time a key is pressed, repeated or released.
         glfwSetKeyCallback(window, (window, key, scancode, action, mods) -> {
-            if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
+            if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
                 glfwSetWindowShouldClose(window, true); // We will detect this in the rendering loop
+            } else if (key == GLFW_KEY_F1 && action == GLFW_PRESS) {
+                renderMode = RENDER_MODE_DENSITY;
+                System.out.println("Render mode: DENSITY");
+            } else if (key == GLFW_KEY_F2 && action == GLFW_PRESS) {
+                renderMode = RENDER_MODE_VELOCITY;
+                System.out.println("Render mode: VELOCITY");
+            } else if (key == GLFW_KEY_F3 && action == GLFW_PRESS) {
+                engine.clear();
+                System.out.println("Cleared simulation data");
+            }
+        });
+
+        // Setup a mouse callback.
+        glfwSetCursorPosCallback(window, (window, xpos, ypos) -> {
+            if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE) {
+                return;
+            }
+
+            userInputBuffer.clear();
+            for (int i = 0; i < userInputBuffer.capacity(); i++) {
+                userInputBuffer.put(0);
+            }
+
+            // This check can prevent the bug of not updating user input texture.
+            if(!engine.hasCleared()) engine.clear();
+
+            // Mouse dragging logic:
+            ypos = height - ypos; // Invert Y coordinate
+
+            xpos *= ((double) engine.nX / width);
+            ypos *= ((double) engine.nY / height);
+
+            engine.userInput((int) xpos, (int) ypos);
         });
 
         // Get the thread stack and push a new frame
@@ -90,31 +141,20 @@ public class App {
         glfwShowWindow(window);
     }
 
-    private void initTextures(int width, int height) {
-        quadTexture = new Texture(width, height, true);
-        glActiveTexture(GL_TEXTURE0);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
-        glBindImageTexture(0, quadTexture.getId(), 0, false, 0, GL_WRITE_ONLY, GL_RGBA32F);
-
-        int samplerLocation = screenProgram.getUniformLocation("texSampler");
-        screenProgram.use();
-        glUniform1i(samplerLocation, 0);
+    private void initTextures() {
+        // For the user input texture
+        userInputBuffer = BufferUtils.createFloatBuffer(width * height * 3);
+        Texture.initPrograms();
     }
 
     private void initShaders() {
-        Shader screenVertexShader = new Shader("shaders/vertex.glsl", GL_VERTEX_SHADER);
-        Shader screenFragmentShader = new Shader("shaders/fragment.glsl", GL_FRAGMENT_SHADER);
+        Shader screenVertexShader = Shader.createFromFile("shaders/vertex.glsl", GL_VERTEX_SHADER);
+        Shader screenFragmentShader = Shader.createFromFile("shaders/fragment.glsl", GL_FRAGMENT_SHADER);
 
         screenProgram = new ShaderProgram(true);
         screenProgram.attachShader(screenVertexShader);
         screenProgram.attachShader(screenFragmentShader);
         screenProgram.link();
-
-
-        Shader computeShader = new Shader("shaders/compute.glsl", GL_COMPUTE_SHADER);
-        computeProgram = new ShaderProgram(true);
-        computeProgram.attachShader(computeShader);
-        computeProgram.link();
     }
 
     private void initBufferObjects() {
@@ -122,10 +162,10 @@ public class App {
 
         // Vertex data for a quad (positions only)
         float[] quadVertices = {
-                -0.5f, -0.5f, 0.0f,  // Bottom-left
-                0.5f, -0.5f, 0.0f,  // Bottom-right
-                0.5f,  0.5f, 0.0f,  // Top-right
-                -0.5f,  0.5f, 0.0f   // Top-left
+                -1f, -1f, 0.0f,  // Bottom-left
+                1f, -1f, 0.0f,  // Bottom-right
+                1f, 1f, 0.0f,  // Top-right
+                -1f, 1f, 0.0f   // Top-left
         };
 
         // Index data for the quad (two triangles)
@@ -143,7 +183,17 @@ public class App {
         };
 
         // Initialize objects
-        VAO quadVAO = new VAO(quadVertices.length, true, true);
+        VAO quadVAO = new VAO(quadVertices.length, true, true) {
+            @Override
+            public void draw() {
+                if (renderMode == RENDER_MODE_DENSITY) {
+                    engine.getDensityTexture().bindToUnit(0);
+                } else if (renderMode == RENDER_MODE_VELOCITY) {
+                    engine.getVelocityTexture().bindToUnit(0);
+                }
+                super.draw();
+            }
+        };
         vaos.add(quadVAO);
         BufferObject quadVBO = new BufferObject(quadVertices, GL_ARRAY_BUFFER, true);
         BufferObject quadIBO = new BufferObject(quadIndices, GL_ELEMENT_ARRAY_BUFFER, true);
@@ -167,19 +217,14 @@ public class App {
         // Run the rendering loop until the user has attempted to close
         // the window or has pressed the ESCAPE key.
         while (!glfwWindowShouldClose(window)) {
+            long loopStartTime = System.currentTimeMillis();
+
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
 
-            computeProgram.use();
-            int localSizeX = 16, localSizeY = 16; // this is set in the shader
-            int numGroupsX = (quadTexture.getWidth() + localSizeX - 1) / localSizeX;
-            int numGroupsY = (quadTexture.getHeight() + localSizeY - 1) / localSizeY;
+            // Perform the fluid simulation step
+            engine.step(deltaTime);
 
-            // The dispatch call. This takes most of the time.
-            glDispatchCompute(numGroupsX, numGroupsY, 1); // Dispatch the work groups
-
-            // Ensure all work has completed.
-            glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT); // Ensure the write to image is visible to subsequent operations
-
+            // Render the models for rasterization
             screenProgram.use();
             for (VAO vao : vaos) {
                 vao.bind();
@@ -191,6 +236,8 @@ public class App {
             // Poll for window events. The key callback above will only be
             // invoked during this call.
             glfwPollEvents();
+
+            deltaTime = (float) (System.currentTimeMillis() - loopStartTime) / 1000.0f;
         }
     }
 
@@ -199,6 +246,7 @@ public class App {
         ShaderProgram.cleanupAll();
         BufferObject.cleanupAll();
         VAO.cleanupAll();
+        MemoryUtil.memFree(userInputBuffer);
 
         glfwFreeCallbacks(window);
         System.out.println("GLFW Callbacks freed!");
@@ -214,6 +262,6 @@ public class App {
     }
 
     public static void main(String[] args) {
-        new App().run(300, 300, "Fluid Simulation");
+        new App().run(800, 600, "Fluid Simulation");
     }
 }
