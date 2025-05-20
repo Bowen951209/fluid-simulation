@@ -23,11 +23,13 @@ In velocity render mode, the x-component of velocity is mapped to the red channe
 green channel🟩. Negative values in either component appear as black.
 
 ## 🔧 How To Run & Play?
-
 ### Prerequisites
 
 - Java 17 or later (Note: The latest Java versions may not be fully compatible with Gradle.)
 - A graphics card that supports OpenGL 4.3 (For GPU version)
+
+You can either go to the [release page](https://github.com/Bowen951209/fluid-simulation/releases) and download a release for your OS, or build it yourself.
+You can skip the following section if you don't want to build it yourself.
 
 ### Clone the Repository
 
@@ -35,6 +37,8 @@ green channel🟩. Negative values in either component appear as black.
 git clone https://github.com/Bowen951209/fluid-simulation.git
 cd fluid-simulation
 ```
+The default natives used in `build.gradle` is `natives-windows`. If you are building the project on other platforms, 
+you have to change that manually in the `build.gradle` file.
 
 ### Run using Gradle
 
@@ -50,6 +54,16 @@ application {
     mainClassName = 'AppSwing'
 }
 ```
+
+### Run the release
+- #### Run the OpenGL app with:
+    ```bash
+    java -jar [release-file-name] --app gpu
+    ```
+- #### Run the Swing app with:
+    ```bash
+    java -jar [release-file-name] --app cpu
+    ```
 
 ### Controls
 
