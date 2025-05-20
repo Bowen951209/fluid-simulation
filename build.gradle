@@ -1,13 +1,17 @@
 plugins {
     id 'java'
     id 'application'
+    id 'distribution'
 }
 
 group = 'net.bowen'
-version = '1.0-SNAPSHOT'
-project.ext.lwjglVersion = "3.3.4"
-project.ext.jomlVersion = "1.10.7"
-project.ext.lwjglNatives = project.hasProperty('target') ? "natives-${project.getProperty('target')}" : "natives-windows"
+version = '0.1.0'
+
+ext {
+    lwjglVersion = "3.3.4"
+    jomlVersion = "1.10.7"
+    lwjglNatives = project.hasProperty("target") ? "natives-${project.getProperty("target")}" : "natives-windows"
+}
 
 repositories {
     mavenCentral()
@@ -17,31 +21,29 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
 
-
     implementation platform("org.lwjgl:lwjgl-bom:$lwjglVersion")
 
     implementation "org.lwjgl:lwjgl"
     implementation "org.lwjgl:lwjgl-glfw"
     implementation "org.lwjgl:lwjgl-opengl"
+
     runtimeOnly "org.lwjgl:lwjgl::$lwjglNatives"
     runtimeOnly "org.lwjgl:lwjgl-glfw::$lwjglNatives"
     runtimeOnly "org.lwjgl:lwjgl-opengl::$lwjglNatives"
-    implementation "org.joml:joml:${jomlVersion}"
+
+    implementation "org.joml:joml:$jomlVersion"
 }
 
 test {
     useJUnitPlatform()
 }
 
-tasks.register('packageApp', Copy) {
-    dependsOn tasks.installDist
-
-    def os = project.hasProperty("target") ? project.getProperty("target") : "windows"
-
-    from(layout.buildDirectory.dir("install/${project.name}"))
-    into(layout.buildDirectory.dir("dist/${os}"))
-}
-
 application {
     mainClassName = 'App'
+}
+
+distributions {
+    main {
+        distributionBaseName.set("${project.name}-${project.version}-${project.hasProperty("target") ? project.getProperty("target") : "windows"}")
+    }
 }
