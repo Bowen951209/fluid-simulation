@@ -7,7 +7,7 @@ group = 'net.bowen'
 version = '1.0-SNAPSHOT'
 project.ext.lwjglVersion = "3.3.4"
 project.ext.jomlVersion = "1.10.7"
-project.ext.lwjglNatives = "natives-windows"
+project.ext.lwjglNatives = project.hasProperty('target') ? "natives-${project.getProperty('target')}" : "natives-windows"
 
 repositories {
     mavenCentral()
@@ -31,6 +31,15 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+tasks.register('packageApp', Copy) {
+    dependsOn tasks.installDist
+
+    def os = project.hasProperty("target") ? project.getProperty("target") : "windows"
+
+    from(layout.buildDirectory.dir("install/${project.name}"))
+    into(layout.buildDirectory.dir("dist/${os}"))
 }
 
 application {
