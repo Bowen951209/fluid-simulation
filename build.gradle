@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'application'
-    id 'distribution'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'net.bowen'
@@ -10,7 +10,7 @@ version = '0.1.0'
 ext {
     lwjglVersion = "3.3.4"
     jomlVersion = "1.10.7"
-    lwjglNatives = project.hasProperty("target") ? "natives-${project.getProperty("target")}" : "natives-windows"
+    lwjglNatives = project.hasProperty('target') ? "natives-${project.getProperty('target')}" : "natives-windows"
 }
 
 repositories {
@@ -42,8 +42,16 @@ application {
     mainClassName = 'App'
 }
 
-distributions {
-    main {
-        distributionBaseName.set("${project.name}-${project.version}-${project.hasProperty("target") ? project.getProperty("target") : "windows"}")
+shadowJar {
+    manifest {
+        attributes 'Main-Class': 'App'
+    }
+    archiveClassifier.set('')
+    minimize()
+}
+
+tasks {
+    build {
+        dependsOn shadowJar
     }
 }
