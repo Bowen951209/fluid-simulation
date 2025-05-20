@@ -262,6 +262,33 @@ public class App {
     }
 
     public static void main(String[] args) {
-        new App().run(800, 600, "Fluid Simulation");
+        String appType = null;
+
+        for (int i = 0; i < args.length; i++) {
+            if ("--app".equals(args[i]) && i + 1 < args.length) {
+                appType = args[i + 1].toLowerCase();
+                break;
+            }
+        }
+
+        if (appType == null) {
+            System.out.println("\"--app\" argument not set. Use GPU app by default.");
+            appType = "gpu";
+        }
+
+        switch (appType) {
+            case "cpu" -> {
+                System.out.println("Starting Swing App...");
+                AppSwing.main(null);
+            }
+            case "gpu" -> {
+                System.out.println("Starting OpenGL App...");
+                new App().run(800, 600, "Fluid Simulation");
+            }
+            default -> {
+                System.out.println("Unavailable app argument " + appType + ". Exiting with code 1.");
+                System.exit(1);
+            }
+        }
     }
 }
