@@ -9,10 +9,16 @@ The project includes two implementations:
 - **GPU Version**: Built using **compute shaders** with OpenGL via the [LWJGL](https://www.lwjgl.org/) framework
 
 ## 🖼️ Preview
-
-|  Density Render Mode   |  Velocity Render Mode   |
-|:----------------------:|:-----------------------:|
-| ![](media/density.gif) | ![](media/velocity.gif) |
+<table>
+  <tr>
+    <th>Density Render Mode</th>
+    <th>Velocity Render Mode</th>
+  </tr>
+  <tr>
+    <td><img src="media/density.gif" width="300"/></td>
+    <td><img src="media/velocity.gif" width="300"/></td>
+  </tr>
+</table>
 In velocity render mode, the x-component of velocity is mapped to the red channel🟥, and the y-component is mapped to the
 green channel🟩. Negative values in either component appear as black.
 
